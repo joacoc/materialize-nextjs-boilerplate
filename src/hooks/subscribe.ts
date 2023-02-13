@@ -234,7 +234,7 @@ function useSubscribe<T>(params: Params): State<T> {
         const request: SqlRequest = {
             query: `
                 ${cluster ? `SET cluster = ${cluster};` : ""}
-                SUBSCRIBE (${sql}) WITH (${snapshot ? "SNAPSHOT, " : ""} PROGRESS);
+                SUBSCRIBE (${sql}) WITH (${snapshot === false ? "SNAPSHOT = false, " : ""} PROGRESS);
             `
         }
         socket.send(request);
