@@ -87,6 +87,7 @@ function useSqlWs(params: Params) {
   const handleClose = useCallback(() => {
     setSocketReady(false);
     setSocketError("Connection error");
+    setSocket(null);
   }, []);
 
   const buildSocket = useCallback(() => {
@@ -102,6 +103,7 @@ function useSqlWs(params: Params) {
         ws.send(JSON.stringify(auth));
       };
       ws.addEventListener("close", handleClose);
+      ws.addEventListener("error", handleClose);
 
       setSocket(new SqlWebSocket(ws, setSocketReady));
 
