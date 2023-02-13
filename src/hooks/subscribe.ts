@@ -71,10 +71,11 @@ class SqlWebSocket {
   }
 }
 
-function useSqlWs<T>(params: Params) {
+function useSqlWs(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
+  // const [complete, setComplete] = useState<boolean>(false);
   const { host, proxy, auth } = params.config || getConfig();
 
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -84,9 +85,12 @@ function useSqlWs<T>(params: Params) {
     } else if (data.type === "Error") {
       setSocketError(data.payload);
     }
+    // else if (data.type === "CommandComplete" && socket) {
+    //   setComplete(true);
+    // }
   }, []);
 
-  const handleClose = useCallback((_: CloseEvent) => {
+  const handleClose = useCallback(() => {
     setSocketReady(false);
     setSocketError("Connection error");
   }, []);
@@ -125,6 +129,12 @@ function useSqlWs<T>(params: Params) {
     buildSocket();
   }, [buildSocket, cleanSocket, socket]);
 
+  const complete = useCallback(async () => {
+    if (socket) {
+      cleanSocket(socket.socket);
+    }
+  }, [cleanSocket, socket]);
+
   useEffect(() => {
     const ws = buildSocket();
 
@@ -133,7 +143,7 @@ function useSqlWs<T>(params: Params) {
     };
   }, [auth, buildSocket, cleanSocket, handleClose, handleMessage, host]);
 
-  return { socketReady, socket, socketError, reconnect };
+  return { socketReady, socket, socketError, reconnect, complete };
 };
 
 /**
@@ -145,7 +155,7 @@ function useSqlWs<T>(params: Params) {
 function useSubscribe<T>(params: Params): State<T> {
   const [state, setState] = useState<Readonly<Results<T>>>({columns: [], rows: [],});
   const [history, setHistory] = useState<Readonly<Array<Update> | undefined>>(undefined);
-  const { socket, socketReady, socketError, reconnect } = useSqlWs<T>(params);
+  const { socket, socketReady, socketError, complete, reconnect } = useSqlWs(params);
   const { query } = params;
   const { sql, key, cluster, snapshot, collectHistory } = query;
 
@@ -212,6 +222,7 @@ function useSubscribe<T>(params: Params): State<T> {
                     break;
                 case "CommandComplete":
                     console.log("[socket][onmessage]","Command complete.");
+                    complete();
                     setState({ columns: colNames, rows: streamingState.getValues(), });
                     break;
                 default:
@@ -228,7 +239,7 @@ function useSubscribe<T>(params: Params): State<T> {
         }
         socket.send(request);
     }
-  }, [cluster, key, reconnect, snapshot, socket, collectHistory, socketError, socketReady, sql]);
+  }, [cluster, key, reconnect, complete, snapshot, socket, collectHistory, socketError, socketReady, sql]);
 
   return { data: state, error: socketError, loading: !socketReady, reload: reconnect, history };
 };
