@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { Params, useQuery, useSubscribe } from '@/hooks/'
-import { user, password, host } from "../../mz.config.js";
+import { user, password, host } from "../../config.js";
 
 const inter = Inter({ subsets: ['latin'] })
 
