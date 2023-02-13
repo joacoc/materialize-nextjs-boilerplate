@@ -2,29 +2,10 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { Params, useQuery, useSubscribe } from '@/hooks/'
-import { user, password, host } from "../../config.js";
 
-const inter = Inter({ subsets: ['latin'] })
-
-const params: Params = {
-  query: {
-    sql: "SELECT * FROM mz_internal.mz_cluster_replica_metrics",
-    key: "replica_id",
-  },
-  config: {
-    auth: {
-      user,
-      password
-    },
-    host,
-  }
-};
+const inter = Inter({ subsets: ['latin'] });
 
 export default function Home() {
-  const { data: subscribeData } = useSubscribe(params);
-  const { data: queryData } = useQuery(params);
-
   return (
     <>
       <Head>
@@ -53,8 +34,8 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={styles.center}>
-          <h1 className={inter.className}>Boilerplate for Materialize Apps</h1>
+        <div>
+          <h1 className={`${inter.className} font-semibold text-transparent bg-clip-text text-5xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500`}>Boilerplate for Materialize Apps</h1>
         </div>
 
         <div className={styles.grid}>

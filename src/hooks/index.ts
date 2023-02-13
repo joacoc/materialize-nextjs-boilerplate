@@ -29,7 +29,7 @@ export interface Query {
 
 export interface Params {
   query: Query,
-  config: Config
+  config?: Config
 }
 
 export interface Results {

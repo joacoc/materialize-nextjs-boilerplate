@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
-import { Config, Params, Results, State } from ".";
+import { Params, Results, State } from ".";
+import { getConfig } from "./utils/config";
 import StreamingState from './utils/state';
 
 // TODO: Handle errors correctly.
@@ -75,8 +76,7 @@ function useSqlWs<T>(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket<T> | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
-  const { config } = params;
-  const { host, proxy, auth } = config;
+  const { host, proxy, auth } = params.config || getConfig();
 
   const handleMessage = useCallback((event: MessageEvent) => {
     const data = JSON.parse(event.data);
