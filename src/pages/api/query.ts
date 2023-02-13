@@ -12,12 +12,13 @@ export default async function handler(
     const { params }: { params: Params} = body;
     const { query, config } = params;
     const { sql, cluster } = query;
-    const { host, auth } = config;
 
-    if (!query) {
+    if (!query || !config) {
         res.status(400).json("Missing query");
         return;
     }
+
+    const { host, auth } = config;
 
     if (!host || !auth || !auth.user || !auth.password) {
         res.status(400).json("Missing config fields.");

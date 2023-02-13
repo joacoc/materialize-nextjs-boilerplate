@@ -1,4 +1,4 @@
-interface Update {
+export interface Update {
     key?: string;
     value: any;
     diff: number;
@@ -9,12 +9,16 @@ export default class State {
     private stateCount: Record<string, number>;
     private timestamp: number;
     private valid: boolean;
+    private history: Array<Update> | undefined;
 
-    constructor() {
+    constructor(collectHistory?: boolean) {
       this.state = {};
       this.stateCount = {};
       this.timestamp = 0;
       this.valid = true;
+      if (collectHistory) {
+        this.history = [];
+      }
     }
 
     get(key: string) {
@@ -41,9 +45,17 @@ export default class State {
       return structuredClone(this.state);
     }
 
+    getHistory(): Array<Update> | undefined {
+      return this.history;
+    }
+
     private apply_diff(key: string, diff: number) {
       // Count value starts as a NaN
-      this.stateCount[key] = this.stateCount[key] + diff || 1;
+      if (this.stateCount[key] === undefined) {
+        this.stateCount[key] = diff;
+      } else {
+        this.stateCount[key] = this.stateCount[key] + diff
+      }
     }
 
     private hash(value: any): string {
@@ -68,6 +80,11 @@ export default class State {
       const _key = key || this.hash(value);
       this.apply_diff(_key, diff);
       const count = this.stateCount[_key];
+
+
+      if (this.history) {
+        this.history.push({ key: _key, value, diff });
+      }
 
       if (count <= 0) {
         delete this.state[_key];

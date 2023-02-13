@@ -87,12 +87,13 @@
   width: 480px;
   height: 480px;
   margin-left: -400px;
+  z-index: -1;
 }
 
 .center::after {
   background: var(--primary-glow);
-  width: 240px;
-  height: 180px;
+  width: 440px;
+  height: 280px;
   z-index: -1;
 }
 

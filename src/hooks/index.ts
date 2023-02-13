@@ -1,10 +1,12 @@
 import useSubscribe from "./subscribe";
 import useQuery from "./query";
+import { Update } from "./utils/state";
 
 export interface State {
   data: Results | null,
   loading: boolean,
   error: string | null,
+  history: Readonly<Array<Update>> | undefined,
   reload: () => Promise<void>,
 }
 
@@ -25,6 +27,7 @@ export interface Query {
   sql: string;
   snapshot?: boolean;
   progress?: boolean;
+  collectHistory?: boolean;
 }
 
 export interface Params {

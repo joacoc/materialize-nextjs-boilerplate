@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 import { Params, Results, State } from ".";
 import { getConfig } from "./utils/config";
-import StreamingState from './utils/state';
+import StreamingState, { Update } from './utils/state';
 
 // TODO: Handle errors correctly.
 
@@ -143,18 +143,20 @@ function useSqlWs<T>(params: Params) {
  */
 function useSubscribe<T>(params: Params): State {
   const [state, setState] = useState<Readonly<Results>>({columns: [], rows: [],});
+  const [history, setHistory] = useState<Readonly<Array<Update> | undefined>>(undefined);
   const { socket, socketReady, socketError, reconnect } = useSqlWs<T>(params);
   const { query } = params;
-  const { sql, key, cluster, snapshot } = query;
+  const { sql, key, cluster, snapshot, collectHistory } = query;
 
   useEffect(() => {
     if (socket && socketReady) {
         // Handle progress, colnames, udpated inside the streaming State
-        const streamingState = new StreamingState();
+        const streamingState = new StreamingState(collectHistory);
         let colNames: Array<string> = [];
         let updated = false;
         let keyIndex: number = -1;
         setState({ columns: colNames, rows: streamingState.getValues(), });
+        setHistory(undefined);
 
         socket.onResult(({ type, payload }: WebSocketResult<T>) => {
             switch (type) {
@@ -180,6 +182,13 @@ function useSubscribe<T>(params: Params): State {
                         if (updated) {
                             setState({ columns: colNames, rows: streamingState.getValues(), });
                             updated = false;
+
+                            if (collectHistory) {
+                              const history = streamingState.getHistory();
+                              if (history) {
+                                setHistory([...history]);
+                              }
+                            }
                         }
                     } else {
                         updated = true;
@@ -218,9 +227,9 @@ function useSubscribe<T>(params: Params): State {
         }
         socket.send(request);
     }
-  }, [cluster, key, query, reconnect, snapshot, socket, socketReady]);
+  }, [cluster, key, query, reconnect, snapshot, socket, collectHistory, socketReady]);
 
-  return { data: state, error: socketError, loading: !socketReady, reload: reconnect, };
+  return { data: state, error: socketError, loading: !socketReady, reload: reconnect, history };
 };
 
 export default useSubscribe;
