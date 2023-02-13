@@ -3,8 +3,6 @@ import { Params, Results, State } from ".";
 import { getConfig } from "./utils/config";
 import StreamingState, { Update } from './utils/state';
 
-// TODO: Handle errors correctly.
-
 export interface SimpleRequest {
   query: string;
 }
@@ -75,8 +73,7 @@ function useSqlWs(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
-  // const [complete, setComplete] = useState<boolean>(false);
-  const { host, proxy, auth } = params.config || getConfig();
+  const config = params.config || getConfig();
 
   const handleMessage = useCallback((event: MessageEvent) => {
     const data: WebSocketResult = JSON.parse(event.data);
@@ -85,9 +82,6 @@ function useSqlWs(params: Params) {
     } else if (data.type === "Error") {
       setSocketError(data.payload);
     }
-    // else if (data.type === "CommandComplete" && socket) {
-    //   setComplete(true);
-    // }
   }, []);
 
   const handleClose = useCallback(() => {
@@ -96,20 +90,24 @@ function useSqlWs(params: Params) {
   }, []);
 
   const buildSocket = useCallback(() => {
-    const url = proxy ? `${proxy}?query=${encodeURI(params.query.sql)}` : `wss://${host}/api/experimental/sql`;
-    const ws = new WebSocket(url);
-    setSocketError(null);
+    if (config) {
+      const { auth, host, proxy } = config;
 
-    ws.addEventListener("message", handleMessage);
-    ws.onopen = function () {
-      ws.send(JSON.stringify(auth));
-    };
-    ws.addEventListener("close", handleClose);
+      const url = proxy ? `${proxy}?query=${encodeURI(params.query.sql)}` : `wss://${host}/api/experimental/sql`;
+      const ws = new WebSocket(url);
+      setSocketError(null);
 
-    setSocket(new SqlWebSocket(ws, setSocketReady));
+      ws.addEventListener("message", handleMessage);
+      ws.onopen = function () {
+        ws.send(JSON.stringify(auth));
+      };
+      ws.addEventListener("close", handleClose);
 
-    return ws;
-  }, [auth, handleClose, handleMessage, host, params.query.sql, proxy]);
+      setSocket(new SqlWebSocket(ws, setSocketReady));
+
+      return ws;
+    }
+  }, [config, handleClose, handleMessage, params.query.sql]);
 
   const cleanSocket = useCallback((ws: WebSocket) => {
     setSocketError(null);
@@ -138,10 +136,12 @@ function useSqlWs(params: Params) {
   useEffect(() => {
     const ws = buildSocket();
 
-    return () => {
-      cleanSocket(ws)
-    };
-  }, [auth, buildSocket, cleanSocket, handleClose, handleMessage, host]);
+    if (ws) {
+      return () => {
+        cleanSocket(ws)
+      };
+    }
+  }, [config, buildSocket, cleanSocket, handleClose, handleMessage]);
 
   return { socketReady, socket, socketError, reconnect, complete };
 };
