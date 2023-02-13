@@ -2,10 +2,20 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
+import { useSubscribe } from '@/hooks';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const r = {
+  query: {
+    sql: "SELECT 1;"
+  }
+}
 export default function Home() {
+  const { data } = useSubscribe(r);
+
+  console.log(data);
+
   return (
     <>
       <Head>

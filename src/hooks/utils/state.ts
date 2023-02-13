@@ -1,10 +1,10 @@
 export interface Update {
     key?: string;
-    value: any;
+    value: unknown;
     diff: number;
 }
 
-export default class State {
+export default class State<T> {
     private state: Record<string, any>;
     private stateCount: Record<string, number>;
     private timestamp: number;
@@ -25,8 +25,8 @@ export default class State {
       return this.state[key];
     }
 
-    getKeys(): Array<String> {
-      return Object.keys(this.state);
+    getKeys(): Array<T> {
+      return Object.keys(this.state) as Array<T>;
     }
 
     getValues(): Array<any> {

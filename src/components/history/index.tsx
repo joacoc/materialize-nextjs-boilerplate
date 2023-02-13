@@ -7,7 +7,7 @@ interface Props {
 }
 
 const History = (props: Props): JSX.Element => {
-    const { history, className } = props;
+    const { history, className, } = props;
 
     return (
         <div className={className}>
