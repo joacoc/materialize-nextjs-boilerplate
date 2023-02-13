@@ -16,6 +16,7 @@ export interface Auth {
 export interface Config {
   auth: Auth
   host: string
+  proxy?: string
 }
 
 export interface Query {

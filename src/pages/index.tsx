@@ -3,28 +3,27 @@ import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { Params, useQuery, useSubscribe } from '@/hooks/'
+import { user, password, host } from "../../_config.js";
 
 const inter = Inter({ subsets: ['latin'] })
 
 const params: Params = {
   query: {
-    sql: "SELECT * FROM mz_internal.mz_source_statuses",
+    sql: "SELECT * FROM mz_internal.mz_cluster_replica_metrics",
     key: "replica_id",
   },
   config: {
     auth: {
-      user: "<USER>",
-      password: "<PASSWORD>"
+      user,
+      password
     },
-    host: "<HOST>"
+    host,
   }
 };
 
 export default function Home() {
   const { data: subscribeData } = useSubscribe(params);
   const { data: queryData } = useQuery(params);
-
-  console.log(subscribeData, queryData);
 
   return (
     <>

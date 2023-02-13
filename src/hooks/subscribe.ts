@@ -71,10 +71,12 @@ class SqlWebSocket<T> {
   }
 }
 
-function useSqlWs<T>({ auth, host }: Config) {
+function useSqlWs<T>(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket<T> | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
+  const { config } = params;
+  const { host, proxy, auth } = config;
 
   const handleMessage = useCallback((event: MessageEvent) => {
     const data = JSON.parse(event.data);
@@ -89,9 +91,8 @@ function useSqlWs<T>({ auth, host }: Config) {
   }, []);
 
   const buildSocket = useCallback(() => {
-    const ws = new WebSocket(
-      `wss://${host}/api/experimental/sql`
-    );
+    const url = proxy ? `${proxy}?query=${encodeURI(params.query.sql)}` : `wss://${host}/api/experimental/sql`;
+    const ws = new WebSocket(url);
     setSocketError(null);
 
     ws.addEventListener("message", handleMessage);
@@ -140,9 +141,10 @@ function useSqlWs<T>({ auth, host }: Config) {
  * @param subscribeParams
  * @returns
  */
-function useSubscribe<T>({ query, config }: Params): State {
+function useSubscribe<T>(params: Params): State {
   const [state, setState] = useState<Readonly<Results>>({columns: [], rows: [],});
-  const { socket, socketReady, socketError, reconnect } = useSqlWs<T>(config);
+  const { socket, socketReady, socketError, reconnect } = useSqlWs<T>(params);
+  const { query } = params;
   const { sql, key, cluster, snapshot } = query;
 
   useEffect(() => {
