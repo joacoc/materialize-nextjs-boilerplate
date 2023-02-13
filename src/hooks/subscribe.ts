@@ -104,7 +104,7 @@ function useSqlWs<T>(params: Params) {
     setSocket(new SqlWebSocket<T>(ws, setSocketReady));
 
     return ws;
-  }, [auth, handleClose, handleMessage, host]);
+  }, [auth, handleClose, handleMessage, host, params.query.sql, proxy]);
 
   const cleanSocket = useCallback((ws: WebSocket) => {
     setSocketError(null);
@@ -141,8 +141,8 @@ function useSqlWs<T>(params: Params) {
  * @param subscribeParams
  * @returns
  */
-function useSubscribe<T>(params: Params): State {
-  const [state, setState] = useState<Readonly<Results>>({columns: [], rows: [],});
+function useSubscribe<T>(params: Params): State<T> {
+  const [state, setState] = useState<Readonly<Results<T>>>({columns: [], rows: [],});
   const [history, setHistory] = useState<Readonly<Array<Update> | undefined>>(undefined);
   const { socket, socketReady, socketError, reconnect } = useSqlWs<T>(params);
   const { query } = params;
@@ -227,7 +227,7 @@ function useSubscribe<T>(params: Params): State {
         }
         socket.send(request);
     }
-  }, [cluster, key, query, reconnect, snapshot, socket, collectHistory, socketReady]);
+  }, [cluster, key, query, reconnect, snapshot, socket, collectHistory, socketReady, sql]);
 
   return { data: state, error: socketError, loading: !socketReady, reload: reconnect, history };
 };

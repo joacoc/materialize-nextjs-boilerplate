@@ -1,4 +1,4 @@
-import { Config } from '@/hooks/'
+import { Config } from '../'
 import { user, password, host } from "../../../mz.config.js";
 
 const config: Config = {
