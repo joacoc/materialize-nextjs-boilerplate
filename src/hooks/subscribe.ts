@@ -86,6 +86,11 @@ function useSqlWs(params: Params) {
 
   const handleClose = useCallback(() => {
     setSocketReady(false);
+    setSocket(null);
+  }, []);
+
+  const handleError = useCallback(() => {
+    setSocketReady(false);
     setSocketError("Connection error");
     setSocket(null);
   }, []);
@@ -103,24 +108,26 @@ function useSqlWs(params: Params) {
         ws.send(JSON.stringify(auth));
       };
       ws.addEventListener("close", handleClose);
-      ws.addEventListener("error", handleClose);
+      ws.addEventListener("error", handleError);
 
       setSocket(new SqlWebSocket(ws, setSocketReady));
 
       return ws;
     }
-  }, [config, handleClose, handleMessage, params.query.sql]);
+  }, [config, handleClose, handleMessage, handleError, params.query.sql]);
 
   const cleanSocket = useCallback((ws: WebSocket) => {
+    if (ws) {
+      ws.removeEventListener("close", handleClose);
+      ws.removeEventListener("message", handleMessage);
+      ws.removeEventListener("error", handleError);
+      ws.close();
+    }
+
     setSocketError(null);
     setSocket(null);
     setSocketReady(false);
-    if (ws) {
-      ws.close();
-      ws.removeEventListener("close", handleClose);
-      ws.removeEventListener("message", handleMessage);
-    }
-  }, [handleClose, handleMessage]);
+  }, [handleClose, handleMessage, handleError]);
 
   const reconnect = useCallback(async () => {
     if (socket) {
