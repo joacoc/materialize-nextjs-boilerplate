@@ -10,7 +10,8 @@ import History from "@/components/history";
 const Table = (): JSX.Element => {
     const { data, history } = useSubscribe({
         query: {
-            sql: "SELECT replica_id, cpu_percent FROM mz_internal.mz_cluster_replica_utilization",
+            key: "replica_id",
+            sql: "SELECT replica_id, cpu_percent FROM mz_internal.mz_cluster_replica_utilization LIMIT 5",
             collectHistory: true
         }
     });
@@ -28,15 +29,7 @@ const Table = (): JSX.Element => {
         <main className={styles.main}>
             <div className="flex flex-row">
                 <div className="px-4 sm:px-6 lg:px-8">
-                    <div className="sm:flex sm:items-center">
-                        <div className="sm:flex-auto">
-                        <h1 className="text-xl font-semibold text-gray-900">CPU Percent</h1>
-                        <p className="mt-2 text-sm text-gray-700">
-                            A list of the CPU usage in the clusters.
-                        </p>
-                        </div>
-                    </div>
-                    <div className="mt-8 flex flex-col">
+                    <div className="flex flex-col">
                         <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
                         <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
                             <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -54,10 +47,10 @@ const Table = (): JSX.Element => {
                                 <tbody className="max-h-52 divide-y divide-gray-200 bg-white">
                                 {sortedData.map(({ replica_id, cpu_percent }) => (
                                     <tr key={replica_id}>
-                                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                        <td className="whitespace-nowrap py-2 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                                             {replica_id}
                                         </td>
-                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                        <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
                                             <span className={`inline-flex rounded-full bg-${background(cpu_percent)}-200 px-2 text-xs font-semibold leading-5 text-${background(cpu_percent)}-800`}>
                                                 {cpu_percent}
                                             </span>
@@ -66,19 +59,19 @@ const Table = (): JSX.Element => {
                                 ))}
                                 </tbody>
                             </table>
+                            {history && (
+                                <div className="bg-white rounded-md w-96 h-fit p-2 shadow-md border-gray-100 border-1 border-t-0">
+                                    <div className="text-gray-500">
+                                        <h1 className={inter.className}>History</h1>
+                                        <History history={history} className={"max-h-80 max-w-96 overflow-scroll"} />
+                                    </div>
+                                </div>
+                            )}
                             </div>
                         </div>
                         </div>
                     </div>
                 </div>
-                {history && (
-                        <div className="mt-2 bg-white rounded-md w-96 h-fit p-2 shadow-md border-gray-100 border-1">
-                            <div className="text-gray-500">
-                                <h1 className={inter.className}>History</h1>
-                                <History history={history} className={"max-h-80 max-w-96 overflow-scroll"} />
-                            </div>
-                        </div>
-                )}
             </div>
         </main>
     );
