@@ -2,8 +2,8 @@ import useSubscribe from "./subscribe";
 import useQuery from "./query";
 import { Update } from "./utils/state";
 
-export interface State {
-  data: Results | null,
+export interface State<T> {
+  data: Results<T> | null,
   loading: boolean,
   error: string | null,
   history: Readonly<Array<Update>> | undefined,
@@ -35,9 +35,9 @@ export interface Params {
   config?: Config
 }
 
-export interface Results {
+export interface Results<T> {
   columns: Array<string>;
-  rows: Array<any>;
+  rows: Array<T>;
   getColumnByName?: <R, V>(row: R[], name: string) => V;
 };
 
