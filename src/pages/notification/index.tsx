@@ -110,7 +110,7 @@ export default function Notifications() {
             </div>
         </div>
         {history && (
-                <div className="mt-10 text-gray-500 bg-white rounded-md">
+                <div className="mt-10 p-4 text-gray-500 bg-white rounded-md">
                     <h1 className={inter.className}>History</h1>
                     <History history={history} className={"max-h-80 overflow-scroll"} />
                 </div>
