@@ -35,8 +35,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={`${styles.center} flex-col`}>
+        <div className={`${styles.center} flex-col space-y-8`}>
           <h1 className={`${inter.className} font-semibold text-transparent bg-clip-text text-5xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500`}>Boilerplate for Apps</h1>
+            <a
+              href="/showcase"
+              className={`${styles.card}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <h3 className={inter.className}>
+                Showcase <span>-&gt;</span>
+              </h3>
+            </a>
         </div>
 
         <div className={styles.grid}>
