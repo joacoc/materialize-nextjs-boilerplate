@@ -17,17 +17,23 @@ export default function Showcase() {
                 <div className="text-center">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Chart</h2>
                     <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key undefined</h4>
-                    <Chart />
+                    <div className="blur-sm hover:blur-0">
+                        <Chart />
+                    </div>
                 </div>
                 <div className="text-center overflow-hidden">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Table</h2>
                     <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key =  Replica ID</h4>
-                    <Table />
+                    <div className="blur-sm hover:blur-0">
+                        <Table />
+                    </div>
                 </div>
                 <div className="text-center">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Notification</h2>
                     <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key undefined</h4>
-                    <Notifications />
+                    <div className="blur-sm hover:blur-0">
+                        <Notifications />
+                    </div>
                 </div>
             </div>
         </div>
