@@ -30,7 +30,7 @@ export default function Showcase() {
                 </div>
                 <div className="text-center">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Notification</h2>
-                    <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key undefined</h4>
+                    <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key doesn't matter</h4>
                     <div className="blur-sm hover:blur-0">
                         <Notifications />
                     </div>
