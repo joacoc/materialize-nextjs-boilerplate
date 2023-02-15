@@ -16,14 +16,17 @@ export default function Showcase() {
             <div className="flex-1 grid grid-cols-3 divide-x-2 divide-gray-300 mb-10">
                 <div className="text-center">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Chart</h2>
+                    <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key undefined</h4>
                     <Chart />
                 </div>
                 <div className="text-center overflow-hidden">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Table</h2>
+                    <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key =  Replica ID</h4>
                     <Table />
                 </div>
                 <div className="text-center">
                     <h2 className={`${inter.className} font-semibold text-3xl`}>Notification</h2>
+                    <h4 className={`${inter.className} font-light text-xl text-gray-600`}>Key undefined</h4>
                     <Notifications />
                 </div>
             </div>
