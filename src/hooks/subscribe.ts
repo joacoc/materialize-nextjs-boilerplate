@@ -175,6 +175,7 @@ function useSubscribe<T>(params: Params): State<T> {
         let colNames: Array<string> = [];
         let updated = false;
         let keyIndex: number = -1;
+        let clusterConfirmed: boolean;
         setState({ columns: colNames, rows: streamingState.getValues(), });
         setHistory(undefined);
 
@@ -230,9 +231,13 @@ function useSubscribe<T>(params: Params): State<T> {
                     }
                     break;
                 case "CommandComplete":
-                    console.log("[socket][onmessage]","Command complete.");
-                    complete();
-                    setState({ columns: colNames, rows: streamingState.getValues(), });
+                    if (cluster && !clusterConfirmed) {
+                      clusterConfirmed = true;
+                    } else {
+                      console.log("[socket][onmessage]","Command complete.");
+                      complete();
+                      setState({ columns: colNames, rows: streamingState.getValues(), });
+                    }
                     break;
                 default:
                     break;
