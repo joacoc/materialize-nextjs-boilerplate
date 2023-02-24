@@ -7,11 +7,16 @@ import { useSubscribe } from '@/hooks';
 const inter = Inter({ subsets: ['latin'] });
 
 export default function Home() {
-  const { data } = useSubscribe({
-    query: { sql: "SELECT * from mz_views" },
+  const { } = useSubscribe({
+    query: { sql: "SELECT 1" },
+    config: {
+      auth: {
+        password: "",
+        user: "",
+      },
+      host: ""
+    }
   });
-
-  console.log(data);
 
   return (
     <>

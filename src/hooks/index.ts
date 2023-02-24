@@ -23,7 +23,6 @@ export interface Config {
 
 export interface Query {
   cluster?: string;
-  key?: string | Array<string>;
   sql: string;
   snapshot?: boolean;
   progress?: boolean;

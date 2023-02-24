@@ -78,7 +78,6 @@ export default class State<T> {
   }
 
   batchUpdate(updates: Array<Update<T>>, timestamp: number) {
-    console.log("Updates:", updates);
     if (updates.length > 0) {
       this.validate(timestamp);
       this.timestamp = timestamp;

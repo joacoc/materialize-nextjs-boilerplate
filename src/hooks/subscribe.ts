@@ -69,11 +69,20 @@ class SqlWebSocket {
   }
 }
 
+/**
+ * WebSocket hook for the Materialize WebSocket API
+ * @param params
+ * @returns
+ */
 function useSqlWs(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
   const config = params.config || getConfig();
+  const { auth, host, proxy } = config || {};
+  const { password, user } = auth || {};
+  const { query } = params;
+  const { sql } = query;
 
   const handleMessage = useCallback((event: MessageEvent) => {
     const data: WebSocketResult = JSON.parse(event.data);
@@ -96,25 +105,21 @@ function useSqlWs(params: Params) {
   }, []);
 
   const buildSocket = useCallback(() => {
-    if (config) {
-      const { auth, host, proxy } = config;
+    const url = proxy ? `${proxy}?query=${encodeURI(sql)}` : `wss://${host}/api/experimental/sql`;
+    const ws = new WebSocket(url);
+    setSocketError(null);
 
-      const url = proxy ? `${proxy}?query=${encodeURI(params.query.sql)}` : `wss://${host}/api/experimental/sql`;
-      const ws = new WebSocket(url);
-      setSocketError(null);
+    ws.addEventListener("message", handleMessage);
+    ws.onopen = function () {
+      ws.send(JSON.stringify({ user, password }));
+    };
+    ws.addEventListener("close", handleClose);
+    ws.addEventListener("error", handleError);
 
-      ws.addEventListener("message", handleMessage);
-      ws.onopen = function () {
-        ws.send(JSON.stringify(auth));
-      };
-      ws.addEventListener("close", handleClose);
-      ws.addEventListener("error", handleError);
+    setSocket(new SqlWebSocket(ws, setSocketReady));
 
-      setSocket(new SqlWebSocket(ws, setSocketReady));
-
-      return ws;
-    }
-  }, [config, handleClose, handleMessage, handleError, params.query.sql]);
+    return ws;
+  }, [handleClose, handleMessage, handleError, sql, host, user, password]);
 
   const cleanSocket = useCallback((ws: WebSocket) => {
     if (ws) {
@@ -150,7 +155,7 @@ function useSqlWs(params: Params) {
         cleanSocket(ws)
       };
     }
-  }, [config, buildSocket, cleanSocket, handleClose, handleMessage]);
+  }, [buildSocket, cleanSocket]);
 
   return { socketReady, socket, socketError, reconnect, complete };
 };
@@ -167,9 +172,13 @@ interface SubscriptionParams<T> {
 interface CallbackParams<T> {
   columns: Array<string>;
   rows: Readonly<Array<T>>;
-  history: Readonly<Array<Update<T>>>;
+  history?: Readonly<Array<Update<T>>>;
 }
 
+/**
+ * Handle subscription updates and keep up-to-date the state
+ * @param param0
+ */
 const handleSubscription = function<T>({
   socket,
   cluster,
@@ -182,20 +191,18 @@ const handleSubscription = function<T>({
   const columns: Array<string> = [];
   let clusterConfirmed = false;
   let lastTimestamp = 0;
-  let hasUpdates = false;
 
   const processBuffer = () => {
     // Update the state
     state.batchUpdate(buffer, lastTimestamp);
-    hasUpdates = false;
-    onUpdate({ columns, rows: state.getStateAsArray(), history: [] });
+    onUpdate({ columns, rows: state.getStateAsArray(), history: state.getHistory() });
   }
 
   const handleCommandComplete = () => {
     if (cluster && !clusterConfirmed) {
       clusterConfirmed = true;
     } else {
-      onComplete({ columns, rows: state.getStateAsArray(), history: [] });
+      onComplete({ columns, rows: state.getStateAsArray(), history: state.getHistory() });
       processBuffer();
     }
   }
@@ -210,18 +217,17 @@ const handleSubscription = function<T>({
       lastTimestamp = ts;
 
       if (progress) {
-          if (hasUpdates) {
-              try {
-                processBuffer();
-              } catch (err) {
-                console.error(err);
-                onError();
-              } finally {
-                buffer.splice(0, buffer.length);
-              }
+        if (buffer.length > 0) {
+          try {
+            processBuffer();
+          } catch (err) {
+            console.error(err);
+            onError();
+          } finally {
+            buffer.splice(0, buffer.length);
           }
+        }
       } else {
-          hasUpdates = true;
           const value: Record<any, any> = {};
           columns.forEach((columnName, i) => {
             value[columnName] = rowData[i];
@@ -260,14 +266,12 @@ function useSubscribe<T>(params: Params): State<T> {
   const [history, setHistory] = useState<Readonly<Array<Update<T>> | undefined>>(undefined);
   const { socket, socketReady, socketError, complete, reconnect } = useSqlWs(params);
   const { query } = params;
-  const { sql, key, cluster, snapshot, collectHistory } = query;
+  const { sql, cluster, snapshot, collectHistory } = query;
 
   const onUpdate = useCallback(({ columns, rows, history }: CallbackParams<T>) => {
-    // Set the state
     setState({ columns, rows });
 
-    // Set the history
-    if (collectHistory) {
+    if (collectHistory && history) {
       setHistory([...history]);
     }
   }, []);
@@ -275,32 +279,31 @@ function useSubscribe<T>(params: Params): State<T> {
   const onComplete = useCallback((callbackParams: CallbackParams<T>) => {
     onUpdate(callbackParams);
     complete();
-  }, []);
+  }, [complete]);
 
-  const onError = useCallback(() => reconnect(), []);
+  const onError = useCallback(() => reconnect(), [reconnect]);
 
   useEffect(() => {
     if (socket && socketReady && !socketError) {
-        // Handle progress, column names, udpates, state, etc..
-        handleSubscription<T>({
-          socket,
-          cluster,
-          collectHistory,
-          onUpdate,
-          onComplete,
-          onError,
-        });
+      // Handle progress, column names, udpates, state, etc..
+      handleSubscription<T>({
+        socket,
+        cluster,
+        collectHistory,
+        onUpdate,
+        onComplete,
+        onError,
+      });
 
-        // TODO: Make progress optional
-        const request: SqlRequest = {
-            query: `
-                ${cluster ? `SET cluster = ${cluster};` : ""}
-                SUBSCRIBE (${sql}) WITH (${snapshot === false ? "SNAPSHOT = false, " : ""} PROGRESS);
-            `
-        }
-        socket.send(request);
+      const request: SqlRequest = {
+          query: `
+              ${cluster ? `SET cluster = ${cluster};` : ""}
+              SUBSCRIBE (${sql}) WITH (${snapshot === false ? "SNAPSHOT = false, " : ""} PROGRESS);
+          `
+      }
+      socket.send(request);
     }
-  }, [cluster, key, reconnect, complete, snapshot, socket, collectHistory, socketError, socketReady, sql]);
+  }, [cluster, snapshot, socket, collectHistory, socketError, socketReady, sql, onError, onUpdate, onError]);
 
   return { data: state, error: socketError, loading: !socketReady, reload: reconnect, history };
 };
