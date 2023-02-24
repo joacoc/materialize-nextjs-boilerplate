@@ -6,7 +6,7 @@ export interface State<T> {
   data: Results<T> | null,
   loading: boolean,
   error: string | null,
-  history: Readonly<Array<Update>> | undefined,
+  history: Readonly<Readonly<Array<Update<T>>>> | undefined,
   reload: () => Promise<void>,
 }
 
@@ -37,7 +37,7 @@ export interface Params {
 
 export interface Results<T> {
   columns: Array<string>;
-  rows: Array<T>;
+  rows: Readonly<Array<T>>;
   getColumnByName?: <R, V>(row: R[], name: string) => V;
 };
 

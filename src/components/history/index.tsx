@@ -1,12 +1,12 @@
 import { Update } from "@/hooks/utils/state";
 import React from "react";
 
-interface Props {
-    history?: Readonly<Array<Update>>;
+interface Props<T> {
+    history?: Readonly<Array<Update<T>>>;
     className?: string;
 }
 
-const History = (props: Props): JSX.Element => {
+const History = function<T>(props: Props<T>): JSX.Element {
     const { history, className, } = props;
 
     return (
@@ -14,16 +14,12 @@ const History = (props: Props): JSX.Element => {
             <ul role="list" className="divide-y divide-gray-200 overflow-hidden">
                 {/* Reverse map */}
                 {history && history.map((_, i) => {
-                    const { key, value, diff } = history[history.length - i - 1];
+                    const { value, diff } = history[history.length - i - 1];
 
                     return (
-                        <li key={key + String(i)} className="flex py-4">
+                        <li key={String(i)} className="flex py-4">
                             <div className="flex flex-row">
                                 <div className="text-sm font-medium max-w-xs">
-                                    <div className="flex flex-row">
-                                        <p className="text-gray-900 mr-2">{"Key: "}</p>
-                                        <p className="text-ellipsis whitespace-nowrap overflow-clip">{key}</p>
-                                    </div>
                                     <div className="flex flex-row">
                                         <p className="text-gray-900 mr-2">{"Value: "}</p>
                                         <p className="text-ellipsis whitespace-nowrap overflow-clip">{JSON.stringify(value)}</p>
