@@ -194,15 +194,15 @@ const handleSubscription = function<T>({
 
   const processBuffer = () => {
     // Update the state
-    state.batchUpdate(buffer, lastTimestamp);
-    onUpdate({ columns, rows: state.getStateAsArray(), history: state.getHistory() });
+    state.update(buffer, lastTimestamp);
+    onUpdate({ columns, rows: state.getState(), history: state.getHistory() });
   }
 
   const handleCommandComplete = () => {
     if (cluster && !clusterConfirmed) {
       clusterConfirmed = true;
     } else {
-      onComplete({ columns, rows: state.getStateAsArray(), history: state.getHistory() });
+      onComplete({ columns, rows: state.getState(), history: state.getHistory() });
       processBuffer();
     }
   }
@@ -219,6 +219,7 @@ const handleSubscription = function<T>({
       if (progress) {
         if (buffer.length > 0) {
           try {
+            console.log("Process buffer");
             processBuffer();
           } catch (err) {
             console.error(err);
@@ -269,9 +270,11 @@ function useSubscribe<T>(params: Params): State<T> {
   const { sql, cluster, snapshot, collectHistory } = query;
 
   const onUpdate = useCallback(({ columns, rows, history }: CallbackParams<T>) => {
+    console.log("Setting state");
     setState({ columns, rows });
 
     if (collectHistory && history) {
+      console.log("Setting history");
       setHistory([...history]);
     }
   }, []);
