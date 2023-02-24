@@ -170,110 +170,83 @@ interface CallbackParams<T> {
   history: Readonly<Array<Update<T>>>;
 }
 
-class Subscription<T> {
-  state: StreamingState<T>;
-  columns: Array<string>;
-  hasUpdates: boolean;
-  buffer: Array<Update<T>>;
-  socket: SqlWebSocket;
-  collectHistory: boolean;
-  lastTimestamp: number;
-  cluster?: string;
-  clusterConfirmed: boolean;
-  onUpdate: (params: CallbackParams<T>) => void;
-  onComplete: (params: CallbackParams<T>) => void;
-  onError: () => void;
+const handleSubscription = function<T>({
+  socket,
+  cluster,
+  onUpdate,
+  onComplete,
+  onError
+}: SubscriptionParams<T>) {
+  const state = new StreamingState<T>();
+  const buffer: Array<Update<T>> = [];
+  const columns: Array<string> = [];
+  let clusterConfirmed = false;
+  let lastTimestamp = 0;
+  let hasUpdates = false;
 
-  constructor({
-    socket,
-    cluster,
-    collectHistory,
-    onUpdate,
-    onComplete,
-    onError
-  }: SubscriptionParams<T>) {
-    this.state = new StreamingState();
-    this.hasUpdates = false;
-    this.buffer = [];
-    this.socket = socket;
-    this.lastTimestamp = 0;
-    this.columns = [];
-    this.cluster = cluster;
-    this.clusterConfirmed = false;
-    this.collectHistory = collectHistory || false;
-    this.onUpdate = onUpdate;
-    this.onComplete = onComplete;
-    this.onError = onError;
-
-    socket.onResult(({ type, payload }: WebSocketResult) => {
-      switch (type) {
-          case "Rows":
-            // Removes mz_timestamp, mz_progressed, mz_diff
-            payload.splice(0, 3);
-            this.columns = payload;
-            break;
-          case "Row":
-            this.handleRow(payload);
-            break;
-          case "CommandComplete":
-            this.handleCommandComplete();
-            break;
-          default:
-            break;
-      }
-    });
-  }
-
-  private processBuffer() {
+  const processBuffer = () => {
     // Update the state
-    this.state.batchUpdate(this.buffer, this.lastTimestamp);
-    this.hasUpdates = false;
-    this.onUpdate({ columns: this.columns, rows: this.state.getStateAsArray(), history: [] });
+    state.batchUpdate(buffer, lastTimestamp);
+    hasUpdates = false;
+    onUpdate({ columns, rows: state.getStateAsArray(), history: [] });
   }
 
-  getColumns() {
-    return this.columns;
-  }
-
-  handleCommandComplete() {
-    if (this.cluster && !this.clusterConfirmed) {
-      this.clusterConfirmed = true;
+  const handleCommandComplete = () => {
+    if (cluster && !clusterConfirmed) {
+      clusterConfirmed = true;
     } else {
-      this.onComplete({ columns: this.columns, rows: this.state.getStateAsArray(), history: [] });
-      this.processBuffer();
+      onComplete({ columns, rows: state.getStateAsArray(), history: [] });
+      processBuffer();
     }
   }
 
-  handleRow(payload: any) {
+  const handleRow = (payload: any) => {
       const [
           ts,
           progress,
           diff,
           ...rowData
       ] = payload;
-      this.lastTimestamp = ts;
+      lastTimestamp = ts;
 
       if (progress) {
-          if (this.hasUpdates) {
+          if (hasUpdates) {
               try {
-                this.processBuffer();
+                processBuffer();
               } catch (err) {
                 console.error(err);
-                this.onError();
+                onError();
               } finally {
-                this.buffer.splice(0, this.buffer.length);
+                buffer.splice(0, buffer.length);
               }
           }
       } else {
-          this.hasUpdates = true;
+          hasUpdates = true;
           const value: Record<any, any> = {};
-          this.columns.forEach((columnName, i) => {
+          columns.forEach((columnName, i) => {
             value[columnName] = rowData[i];
           });
-          this.buffer.push({ value, diff });
+          buffer.push({ value, diff });
       }
   }
 
+  socket.onResult(({ type, payload }: WebSocketResult) => {
+    switch (type) {
+        case "Rows":
+          // Removes mz_timestamp, mz_progressed, mz_diff
+          payload.splice(0, 3);
+          payload.forEach((columnName) => columns.push(columnName));
+          break;
+        case "Row":
+          handleRow(payload);
+          break;
+        case "CommandComplete":
+          handleCommandComplete();
+          break;
+        default:
+          break;
+    }
+  });
 }
 
 /**
@@ -308,8 +281,8 @@ function useSubscribe<T>(params: Params): State<T> {
 
   useEffect(() => {
     if (socket && socketReady && !socketError) {
-        // Handle progress, colnames, udpated inside the streaming State
-        new Subscription<T>({
+        // Handle progress, column names, udpates, state, etc..
+        handleSubscription<T>({
           socket,
           cluster,
           collectHistory,
