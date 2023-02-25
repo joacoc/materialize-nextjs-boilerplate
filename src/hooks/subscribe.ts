@@ -219,7 +219,6 @@ const handleSubscription = function<T>({
       if (progress) {
         if (buffer.length > 0) {
           try {
-            console.log("Process buffer");
             processBuffer();
           } catch (err) {
             console.error(err);
