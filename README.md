@@ -2,7 +2,13 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
-First, run the development server:
+### ‼️ Fill these fields
+
+https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L8
+https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L27
+
+
+Run the development server:
 
 ```bash
 npm run dev
