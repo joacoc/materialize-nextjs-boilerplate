@@ -1,14 +1,31 @@
 import Head from 'next/head'
-import Image from 'next/image'
 import { Inter } from '@next/font/google'
-import styles from '@/styles/Home.module.css'
 import { useSubscribe } from '@/hooks';
+import mapboxgl, {Map as MapBox} from 'mapbox-gl';
+import { useRef, useEffect, useCallback } from 'react';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const PASTE_YOUR_MAPBOX_ACCESS_TOKEN_HERE = "pk...."
+
+interface Taxi {
+  x: number;
+  y: number;
+  id: string;
+}
 
 export default function Home() {
-  const { } = useSubscribe({
-    query: { sql: "SELECT 1" },
+
+  /**
+   * References
+   */
+  const mapContainer = useRef<any>(null);
+  const map = useRef<MapBox>(null);
+
+  /**
+   * Subscription
+   */
+  const { data } = useSubscribe<Taxi>({
+    query: { sql: "SELECT id, x, y FROM taxis_positions" },
     config: {
       auth: {
         password: "",
@@ -16,6 +33,89 @@ export default function Home() {
       },
       host: ""
     }
+  });
+
+  const taxis = ((data && data.rows) || []).map(({ id, x, y}) => {
+    return {
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [x, y]
+        },
+        "properties": {
+          "name": id
+      },
+    }
+  });
+
+  useEffect(() => {
+    const {current: mapBox} = map;
+
+    if (mapBox) {
+      const source = mapBox.getSource("taxis");
+
+      if (source) {
+        console.log(taxis);
+        (source as any).setData({
+          type: 'FeatureCollection',
+          features: taxis,
+        });
+      }
+    }
+  }, [taxis])
+
+  /**
+   * Config Map
+   */
+  const onLoad = useCallback(() => {
+    /**
+     * Set up antenna geojson's
+     */
+    const {current: mapBox} = map;
+    if (mapBox && taxis) {
+      /**
+       * Add antenna source
+       */
+      mapBox.addSource(`taxis`, {
+        type: "geojson",
+      });
+
+      // Add a circle layer
+      mapBox.addLayer({
+        'id': 'circle',
+        'type': 'circle',
+        'source': 'taxis',
+        'paint': {
+        'circle-color': '#FB9403',
+        'circle-radius': 8,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff'
+        }
+      });
+    }
+  }, [taxis]);
+
+  /**
+   * Create the map
+   */
+  useEffect(() => {
+    const {current: mapBox} = map;
+    if (mapBox) return;
+
+    mapboxgl.accessToken = PASTE_YOUR_MAPBOX_ACCESS_TOKEN_HERE;
+    (map.current as any) = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v10',
+      center: [-73.988, 40.733],
+      zoom: 12.5,
+      scrollZoom: false,
+      doubleClickZoom: false,
+      dragRotate: true,
+      antialias: true,
+      bearing: -60,
+    });
+
+    (map.current as any).on('load', onLoad);
   });
 
   return (
@@ -26,32 +126,8 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <div>
-            <a
-              href="https://materialize.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                src="/materialize-logo.svg"
-                alt="Materialize Logo"
-                className={styles.vercelLogo}
-                width={200}
-                height={60}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={`${styles.center} flex-col`}>
-          <h1 className={`${inter.className} font-semibold text-transparent bg-clip-text text-5xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500`}>Boilerplate for Apps</h1>
-        </div>
-
-        <div className={styles.grid}>
-        </div>
+      <main>
+        <div id="map" ref={mapContainer} className="map w-screen h-screen" />
       </main>
     </>
   )
