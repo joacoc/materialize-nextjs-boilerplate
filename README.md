@@ -11,6 +11,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 4. Select the table/materialized view you want to consume [the taxis positions](https://github.com/joacoc/materialize-nextjs-boilerplate/blob/f77bba5f960de53625c0c1661efa904c9fa4ac98/src/pages/index.tsx#L28)
 5. Run `yarn dev` and watch the taxis moving in real-time!
 
+<img width="1046" alt="Screenshot 2023-02-28 at 15 41 43" src="https://user-images.githubusercontent.com/11491779/221886978-6fb3e10b-7f08-4ca0-a373-f5a20efec4dd.png">
+
 
 ### Extra - Getting Started
 
