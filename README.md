@@ -1,11 +1,18 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+## Steps
 
-### ‼️ Fill these fields
+1. Clone the repository and set the `taxis` branch
+2. Install dependencies
+  ```bash
+  yarn install
+  ```
+3. Fill the [Mapbox token](https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L8) and [Materialize config](https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L27)
+4. Select the table/materialized view you want to consume [the taxis positions](https://github.com/joacoc/materialize-nextjs-boilerplate/blob/f77bba5f960de53625c0c1661efa904c9fa4ac98/src/pages/index.tsx#L28)
+5. Run `yarn dev` and watch the taxis moving in real-time!
 
-https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L8
-https://github.com/joacoc/materialize-nextjs-boilerplate/blob/9f13447094c9f8af382a055ca2ff97c33bc5b2e9/src/pages/index.tsx#L27
+
+### Extra - Getting Started
 
 
 Run the development server:
