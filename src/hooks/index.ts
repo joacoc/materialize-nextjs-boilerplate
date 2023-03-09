@@ -6,7 +6,7 @@ export interface State<T> {
   data: Results<T> | null,
   loading: boolean,
   error: string | null,
-  history: Readonly<Array<Update>> | undefined,
+  history: Readonly<Readonly<Array<Update<T>>>> | undefined,
   reload: () => Promise<void>,
 }
 
@@ -23,7 +23,6 @@ export interface Config {
 
 export interface Query {
   cluster?: string;
-  key?: string | Array<string>;
   sql: string;
   snapshot?: boolean;
   progress?: boolean;
@@ -37,7 +36,7 @@ export interface Params {
 
 export interface Results<T> {
   columns: Array<string>;
-  rows: Array<T>;
+  rows: Readonly<Array<T>>;
   getColumnByName?: <R, V>(row: R[], name: string) => V;
 };
 

@@ -69,11 +69,20 @@ class SqlWebSocket {
   }
 }
 
+/**
+ * WebSocket hook for the Materialize WebSocket API
+ * @param params
+ * @returns
+ */
 function useSqlWs(params: Params) {
   const [socket, setSocket] = useState<SqlWebSocket | null>(null);
   const [socketReady, setSocketReady] = useState<boolean>(false);
   const [socketError, setSocketError] = useState<string | null>(null);
   const config = params.config || getConfig();
+  const { auth, host, proxy } = config || {};
+  const { password, user } = auth || {};
+  const { query } = params;
+  const { sql } = query;
 
   const handleMessage = useCallback((event: MessageEvent) => {
     const data: WebSocketResult = JSON.parse(event.data);
@@ -96,25 +105,21 @@ function useSqlWs(params: Params) {
   }, []);
 
   const buildSocket = useCallback(() => {
-    if (config) {
-      const { auth, host, proxy } = config;
+    const url = proxy ? `${proxy}?query=${encodeURI(sql)}` : `wss://${host}/api/experimental/sql`;
+    const ws = new WebSocket(url);
+    setSocketError(null);
 
-      const url = proxy ? `${proxy}?query=${encodeURI(params.query.sql)}` : `wss://${host}/api/experimental/sql`;
-      const ws = new WebSocket(url);
-      setSocketError(null);
+    ws.addEventListener("message", handleMessage);
+    ws.onopen = function () {
+      ws.send(JSON.stringify({ user, password }));
+    };
+    ws.addEventListener("close", handleClose);
+    ws.addEventListener("error", handleError);
 
-      ws.addEventListener("message", handleMessage);
-      ws.onopen = function () {
-        ws.send(JSON.stringify(auth));
-      };
-      ws.addEventListener("close", handleClose);
-      ws.addEventListener("error", handleError);
+    setSocket(new SqlWebSocket(ws, setSocketReady));
 
-      setSocket(new SqlWebSocket(ws, setSocketReady));
-
-      return ws;
-    }
-  }, [config, handleClose, handleMessage, handleError, params.query.sql]);
+    return ws;
+  }, [handleClose, handleMessage, handleError, sql, host, user, password]);
 
   const cleanSocket = useCallback((ws: WebSocket) => {
     if (ws) {
@@ -150,10 +155,105 @@ function useSqlWs(params: Params) {
         cleanSocket(ws)
       };
     }
-  }, [config, buildSocket, cleanSocket, handleClose, handleMessage]);
+  }, [buildSocket, cleanSocket]);
 
   return { socketReady, socket, socketError, reconnect, complete };
 };
+
+interface SubscriptionParams<T> {
+  socket: SqlWebSocket,
+  cluster?: string,
+  collectHistory?: boolean,
+  onUpdate: (params: CallbackParams<T>) => void,
+  onComplete: (params: CallbackParams<T>) => void,
+  onError: () => void,
+}
+
+interface CallbackParams<T> {
+  columns: Array<string>;
+  rows: Readonly<Array<T>>;
+  history?: Readonly<Array<Update<T>>>;
+}
+
+/**
+ * Handle subscription updates and keep up-to-date the state
+ * @param param0
+ */
+const handleSubscription = function<T>({
+  socket,
+  cluster,
+  onUpdate,
+  onComplete,
+  onError
+}: SubscriptionParams<T>) {
+  const state = new StreamingState<T>();
+  const buffer: Array<Update<T>> = [];
+  const columns: Array<string> = [];
+  let clusterConfirmed = false;
+  let lastTimestamp = 0;
+
+  const processBuffer = () => {
+    // Update the state
+    state.update(buffer, lastTimestamp);
+    onUpdate({ columns, rows: state.getState(), history: state.getHistory() });
+  }
+
+  const handleCommandComplete = () => {
+    if (cluster && !clusterConfirmed) {
+      clusterConfirmed = true;
+    } else {
+      onComplete({ columns, rows: state.getState(), history: state.getHistory() });
+      processBuffer();
+    }
+  }
+
+  const handleRow = (payload: any) => {
+      const [
+          ts,
+          progress,
+          diff,
+          ...rowData
+      ] = payload;
+      lastTimestamp = ts;
+
+      if (progress) {
+        if (buffer.length > 0) {
+          try {
+            processBuffer();
+          } catch (err) {
+            console.error(err);
+            onError();
+          } finally {
+            buffer.splice(0, buffer.length);
+          }
+        }
+      } else {
+          const value: Record<any, any> = {};
+          columns.forEach((columnName, i) => {
+            value[columnName] = rowData[i];
+          });
+          buffer.push({ value, diff });
+      }
+  }
+
+  socket.onResult(({ type, payload }: WebSocketResult) => {
+    switch (type) {
+        case "Rows":
+          // Removes mz_timestamp, mz_progressed, mz_diff
+          payload.splice(0, 3);
+          payload.forEach((columnName) => columns.push(columnName));
+          break;
+        case "Row":
+          handleRow(payload);
+          break;
+        case "CommandComplete":
+          handleCommandComplete();
+          break;
+        default:
+          break;
+    }
+  });
+}
 
 /**
  * Subscription hooks using WebSockets to Materialize
@@ -163,97 +263,49 @@ function useSqlWs(params: Params) {
  */
 function useSubscribe<T>(params: Params): State<T> {
   const [state, setState] = useState<Readonly<Results<T>>>({columns: [], rows: [],});
-  const [history, setHistory] = useState<Readonly<Array<Update> | undefined>>(undefined);
+  const [history, setHistory] = useState<Readonly<Array<Update<T>> | undefined>>(undefined);
   const { socket, socketReady, socketError, complete, reconnect } = useSqlWs(params);
   const { query } = params;
-  const { sql, key, cluster, snapshot, collectHistory } = query;
+  const { sql, cluster, snapshot, collectHistory } = query;
+
+  const onUpdate = useCallback(({ columns, rows, history }: CallbackParams<T>) => {
+    console.log("Setting state");
+    setState({ columns, rows });
+
+    if (collectHistory && history) {
+      console.log("Setting history");
+      setHistory([...history]);
+    }
+  }, []);
+
+  const onComplete = useCallback((callbackParams: CallbackParams<T>) => {
+    onUpdate(callbackParams);
+    complete();
+  }, [complete]);
+
+  const onError = useCallback(() => reconnect(), [reconnect]);
 
   useEffect(() => {
     if (socket && socketReady && !socketError) {
-        // Handle progress, colnames, udpated inside the streaming State
-        const streamingState = new StreamingState(collectHistory);
-        let colNames: Array<string> = [];
-        let updated = false;
-        let keyIndex: number = -1;
-        let clusterConfirmed: boolean;
-        setState({ columns: colNames, rows: streamingState.getValues(), });
-        setHistory(undefined);
+      // Handle progress, column names, udpates, state, etc..
+      handleSubscription<T>({
+        socket,
+        cluster,
+        collectHistory,
+        onUpdate,
+        onComplete,
+        onError,
+      });
 
-        socket.onResult(({ type, payload }: WebSocketResult) => {
-            switch (type) {
-                case "Rows":
-                    // Removes mz_timestamp, mz_progressed, mz_diff
-                    payload.splice(0, 3);
-                    colNames = payload;
-
-                    if (key) {
-                      const index = colNames.findIndex((col) => col === key );
-                      keyIndex = index === -1 ? index : index + 3;
-                    }
-                    break;
-                case "Row":
-                    const [
-                        ts,
-                        progress,
-                        diff,
-                        ...rowData
-                    ] = payload;
-
-                    if (progress) {
-                        if (updated) {
-                            setState({ columns: colNames, rows: streamingState.getValues(), });
-                            updated = false;
-
-                            if (collectHistory) {
-                              const history = streamingState.getHistory();
-                              if (history) {
-                                setHistory([...history]);
-                              }
-                            }
-                        }
-                    } else {
-                        updated = true;
-                        const value: Record<string, T> = {};
-                        colNames.forEach((col, i) => {
-                            value[col] = rowData[i] as any;
-                        });
-
-                        try {
-                            streamingState.update({
-                                key: key && String(payload[keyIndex]),
-                                value,
-                                diff
-                            }, Number(ts));
-                        } catch (err) {
-                          console.error(err);
-                          reconnect();
-                        }
-                    }
-                    break;
-                case "CommandComplete":
-                    if (cluster && !clusterConfirmed) {
-                      clusterConfirmed = true;
-                    } else {
-                      console.log("[socket][onmessage]","Command complete.");
-                      complete();
-                      setState({ columns: colNames, rows: streamingState.getValues(), });
-                    }
-                    break;
-                default:
-                    break;
-            }
-        });
-
-        // TODO: Make progress optional
-        const request: SqlRequest = {
-            query: `
-                ${cluster ? `SET cluster = ${cluster};` : ""}
-                SUBSCRIBE (${sql}) WITH (${snapshot === false ? "SNAPSHOT = false, " : ""} PROGRESS);
-            `
-        }
-        socket.send(request);
+      const request: SqlRequest = {
+          query: `
+              ${cluster ? `SET cluster = ${cluster};` : ""}
+              SUBSCRIBE (${sql}) WITH (${snapshot === false ? "SNAPSHOT = false, " : ""} PROGRESS);
+          `
+      }
+      socket.send(request);
     }
-  }, [cluster, key, reconnect, complete, snapshot, socket, collectHistory, socketError, socketReady, sql]);
+  }, [cluster, snapshot, socket, collectHistory, socketError, socketReady, sql, onError, onUpdate, onError]);
 
   return { data: state, error: socketError, loading: !socketReady, reload: reconnect, history };
 };

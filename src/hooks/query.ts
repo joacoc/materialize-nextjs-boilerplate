@@ -9,11 +9,11 @@ const defaultError = "Error running query.";
  * @params {string} sql to execute in the environment coord or current global coord.
  * @params {object} extraParams in case a particular environment needs to be used rather than the global environment (global coord)
  */
-export default function useQuery(params: Params): State {
+export default function useQuery<T>(params: Params): State<T> {
     const [loading, setLoading] = useState<boolean>(true);
     const requestIdRef = useRef(1);
     const controllerRef = useRef<AbortController>();
-    const [results, setResults] = useState<Results | null>(null);
+    const [results, setResults] = useState<Results<T> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const runSql = React.useCallback(async () => {
@@ -25,7 +25,7 @@ export default function useQuery(params: Params): State {
       const requestId = requestIdRef.current;
       try {
         setLoading(true);
-        const { results: res, errorMessage } = await executeSql(params);
+        const { results: res, errorMessage } = await executeSql<T>(params);
         if (requestIdRef.current > requestId) {
           // a new query has been kicked off, ignore these results
           return;
@@ -34,8 +34,10 @@ export default function useQuery(params: Params): State {
           setResults(null);
           setError(errorMessage);
         } else {
-          setResults(res);
-          setError(null);
+          if (res) {
+            setResults(res);
+            setError(null);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -51,24 +53,24 @@ export default function useQuery(params: Params): State {
       runSql();
     }, [runSql]);
 
-    return { data: results, error, loading, reload: runSql };
+    return { data: results, error, loading, reload: runSql, history: undefined };
   }
 
-  interface ExecuteSqlOutput {
-    results: Results | null;
+  interface ExecuteSqlOutput<T> {
+    results: Results<T> | null;
     errorMessage: string | null;
   }
 
-  export const executeSql = async (
+  export const executeSql = async<T> (
     params: Params,
     requestOpts?: RequestInit
-  ): Promise<ExecuteSqlOutput> => {
+  ): Promise<ExecuteSqlOutput<T>> => {
     const { query, config } = params;
-    const result: ExecuteSqlOutput = {
+    const result: ExecuteSqlOutput<T> = {
       results: null,
       errorMessage: null,
     };
-    if (!config.host || !query.sql) {
+    if (config && (!config.host || !query.sql)) {
       return result;
     }
 
