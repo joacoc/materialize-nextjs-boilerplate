@@ -182,11 +182,12 @@ interface CallbackParams<T> {
 const handleSubscription = function<T>({
   socket,
   cluster,
+  collectHistory,
   onUpdate,
   onComplete,
   onError
 }: SubscriptionParams<T>) {
-  const state = new StreamingState<T>();
+  const state = new StreamingState<T>(collectHistory);
   const buffer: Array<Update<T>> = [];
   const columns: Array<string> = [];
   let clusterConfirmed = false;
